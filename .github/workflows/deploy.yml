@@ -1,0 +1,45 @@
+name: Build & deploy unemployment tracker
+
+on:
+  # Auto-refresh monthly on the 10th at 12:00 UTC (after the BLS jobs report + JOLTS land on FRED)
+  schedule:
+    - cron: "0 12 10 * *"
+  # Rebuild on every push to main
+  push:
+    branches: [main]
+  # Allow manual "Run workflow" from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch FRED data & build site
+        run: python build.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Structural Unemployment Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{color-scheme:light;
+--bg:#f7f7f5;--card:#ffffff;--ink:#1a1a17;--muted:#6b6b63;--line:#e4e3dd;
+--accent:#2f6f4f;--warn:#b4441f;--neutral:#8a8a80;--blue:#2b5c8a;--gold:#a67c00;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+font-size:14px;line-height:1.5;}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em;}
+.sub{color:var(--muted);font-size:13px;margin:0 0 20px;}
+.thesis{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:16px 18px;margin-bottom:22px;font-size:13.5px;}
+.thesis b{color:var(--ink);}
+.thesis .tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;
+text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+.verdict{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:26px;}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 13px;}
+.stat .k{font-size:11.5px;color:var(--muted);margin-bottom:5px;line-height:1.3;height:31px;}
+.stat .v{font-size:21px;font-weight:650;letter-spacing:-.01em;}
+.stat .d{font-size:11.5px;margin-top:3px;color:var(--muted);}
+.chip{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;margin-top:7px;}
+.chip.sup{background:#e8f1ec;color:var(--accent);}
+.chip.against{background:#f6e7e1;color:var(--warn);}
+.chip.flat{background:#efefea;color:var(--neutral);}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:820px){.grid{grid-template-columns:1fr;}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:16px 16px 12px;}
+.panel h3{font-size:14.5px;margin:0 0 2px;}
+.panel .why{font-size:12px;color:var(--muted);margin:0 0 12px;}
+.cbox{position:relative;height:220px;}
+.foot{color:var(--muted);font-size:11.5px;margin-top:26px;line-height:1.6;}
+.foot code{background:#eee;padding:1px 4px;border-radius:3px;font-size:11px;}
+.legend-note{font-size:11px;color:var(--muted);margin-top:7px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Structural Unemployment Tracker</h1>
+<p class="sub">A hiring-freeze signature watch — U.S. labor data, monthly. Data snapshot fetched <span id="asof">—</span> from FRED (BLS &amp; DOL source series).</p>
+
+<div class="thesis">
+<span class="tag">The thesis this dashboard tests</span>
+<div>Unemployment rises <b>not</b> from mass layoffs but from a <b>hiring freeze / no-backfill</b> world: firms don't replace quits, firings, or retirements. The fingerprint is a labor market where the <b>level of unemployment grinds up while every "firing" gauge stays benign and every "finding/hiring" gauge deteriorates.</b> Formally, with u* ≈ s/(s+f), the separation rate <b>s</b> stays low while the job-finding rate <b>f</b> collapses.</div>
+<div class="verdict"><b>Confirmed when:</b> initial claims &amp; layoff rate stay low, <i>while</i> hires rate, quits rate and total churn fall and unemployment duration lengthens. <b>Falsified (ordinary recession) when:</b> claims and separation/layoff rates spike. <b>Watch for the head-fake:</b> if prime-age employment-to-population falls, discouraged workers exit and U-3 understates the damage — anchor on EPOP and duration.</div>
+</div>
+
+<div class="strip" id="strip"></div>
+
+<div class="grid">
+  <div class="panel"><h3>1 · Hires rate — the finding-side proxy</h3><p class="why">Falling hires with stable layoffs = the freeze. No clean single "job-finding rate" on FRED; hires rate is the cleanest available stand-in.</p><div class="cbox"><canvas id="c_hires"></canvas></div></div>
+  <div class="panel"><h3>2 · Hires vs. layoffs &amp; discharges</h3><p class="why">Structural tell: hires fall while layoffs stay flat-low. In a normal recession both rise together.</p><div class="cbox"><canvas id="c_hirelay"></canvas></div></div>
+  <div class="panel"><h3>3 · Quits rate — churn / confidence</h3><p class="why">People stop quitting when there's nowhere to go. Low quits alongside rising unemployment is a freeze signal, not a hot-market one.</p><div class="cbox"><canvas id="c_quits"></canvas></div></div>
+  <div class="panel"><h3>4 · Total churn (hires + separations)</h3><p class="why">The single best summary of a "sclerotic" labor market: low hiring <i>and</i> low separations grinding down together.</p><div class="cbox"><canvas id="c_churn"></canvas></div></div>
+  <div class="panel"><h3>5 · Duration: 27+ week share &amp; median weeks</h3><p class="why">The mechanical consequence of a low finding rate — the unemployed get stuck longer even before the level moves much.</p><div class="cbox"><canvas id="c_dur"></canvas></div></div>
+  <div class="panel"><h3>6 · Vacancy-to-unemployment (V/U)</h3><p class="why">Openings per unemployed person. A collapsing ratio — especially a Beveridge-curve shift — signals matching deterioration.</p><div class="cbox"><canvas id="c_vu"></canvas></div></div>
+  <div class="panel"><h3>7 · U-6 minus U-3 gap</h3><p class="why">As discouraged/part-time slack builds, the gap widens and the headline rate hides damage.</p><div class="cbox"><canvas id="c_gap"></canvas></div></div>
+  <div class="panel"><h3>8 · Prime-age (25–54) EPOP &amp; participation</h3><p class="why">The head-fake guard. If these fall, dropouts are suppressing U-3 — anchor here instead of the headline.</p><div class="cbox"><canvas id="c_prime"></canvas></div></div>
+  <div class="panel"><h3>9 · Continuing ÷ initial jobless claims</h3><p class="why">Flat initial claims (nobody firing) but a rising ratio = the newly unemployed can't get rehired. High-frequency; history builds forward from this snapshot.</p><div class="cbox"><canvas id="c_claims"></canvas></div><p class="legend-note" id="claims_note"></p></div>
+</div>
+
+<p class="foot" id="foot"></p>
+</div>
+
+<script>
+const DATA = __FRED_DATA__;
+</script>
+<script>
+(function(){
+const S = DATA.series;
+document.getElementById('asof').textContent = (DATA.fetched_at||'').slice(0,10);
+
+// helpers
+const obs = id => (S[id] && S[id].obs) ? S[id].obs : [];
+const dates = id => obs(id).map(o=>o[0]);
+const vals  = id => obs(id).map(o=>o[1]);
+const last  = id => { const o=obs(id); return o.length?o[o.length-1]:null; };
+// return the observation closest to `months` before the latest date (calendar-based, robust to gaps)
+const nAgo  = (id,months) => {
+  const o=obs(id); if(!o.length) return null;
+  const latest=new Date(o[o.length-1][0]);
+  const target=new Date(latest); target.setMonth(target.getMonth()-months);
+  let best=null,bd=Infinity;
+  for(const p of o){ const d=Math.abs(new Date(p[0])-target); if(d<bd){bd=d;best=p;} }
+  // only accept if within ~45 days of target
+  return bd<=45*864e5?best:null;
+};
+function fmt(v,d){ if(v==null||isNaN(v))return '—'; return Number(v).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
+
+// align two monthly series on common dates
+function pair(idA,idB){
+  const mapB = Object.fromEntries(obs(idB));
+  const out={labels:[],a:[],b:[]};
+  obs(idA).forEach(([d,va])=>{ if(d in mapB){ out.labels.push(d); out.a.push(va); out.b.push(mapB[d]); }});
+  return out;
+}
+// derived monthly series aligned on dates of idA
+function derive(idA,idB,fn){
+  const mapB=Object.fromEntries(obs(idB));
+  const labels=[],data=[];
+  obs(idA).forEach(([d,va])=>{ if(d in mapB){ labels.push(d); data.push(fn(va,mapB[d])); }});
+  return {labels,data};
+}
+
+// ---- summary strip ----
+const strip=document.getElementById('strip');
+function chipFor(kind){ // kind: 'sup' supports thesis, 'against', 'flat'
+  const m={sup:['supports','chip sup'],against:['counters','chip against'],flat:['neutral','chip flat']};
+  return `<span class="${m[kind][1]}">${m[kind][0]}</span>`;
+}
+// direction of change over ~12 months and mapping to thesis support
+function card(label,id,dec,unit,goodDir,horizon){
+  horizon=horizon||12;
+  const l=last(id), p=nAgo(id,horizon);
+  if(l==null){strip.insertAdjacentHTML('beforeend',`<div class="stat"><div class="k">${label}</div><div class="v">—</div></div>`);return;}
+  const cur=l[1], prev=p?p[1]:null;
+  let dtxt='', kind='flat';
+  if(prev!=null){
+    const ch=cur-prev;
+    dtxt=(ch>=0?'+':'')+fmt(ch,dec)+unit+' vs '+(p[0]||'').slice(0,7);
+    // goodDir = 'down' means a FALL supports the structural thesis
+    if(Math.abs(ch)<1e-9) kind='flat';
+    else if(goodDir==='down') kind = ch<0?'sup':'against';
+    else if(goodDir==='up')   kind = ch>0?'sup':'against';
+    else kind='flat';
+  }
+  strip.insertAdjacentHTML('beforeend',
+   `<div class="stat"><div class="k">${label}</div><div class="v">${fmt(cur,dec)}${unit}</div><div class="d">${dtxt}</div>${prev!=null?chipFor(kind):''}</div>`);
+}
+card('U-3 unemployment','UNRATE',1,'%','up');
+card('Hires rate (JOLTS)','JTSHIR',1,'%','down');
+card('Quits rate','JTSQUR',1,'%','down');
+card('Layoffs &amp; discharges rate','JTSLDR',1,'%','down'); // low layoffs supports "not a firing" story
+card('Total churn (hire+sep)','__CHURN__',1,'%','down');
+card('27+ wk share of unemployed','LNS13025703',1,'%','up');
+card('Median duration (wks)','UEMPMED',0,'','up');
+card('Prime-age EPOP (25–54)','LNS12300060',1,'%','down');
+
+// inject churn synthetic series for the card
+(function(){
+  const d=derive('JTSHIR','JTSTSR',(a,b)=>a+b);
+  S['__CHURN__']={label:'Total churn',obs:d.labels.map((l,i)=>[l,d.data[i]])};
+})();
+// rebuild churn card (was placeholder before series existed) — simplest: recompute strip fully
+strip.innerHTML='';
+card('U-3 unemployment','UNRATE',1,'%','up');
+card('Hires rate (JOLTS)','JTSHIR',1,'%','down');
+card('Quits rate','JTSQUR',1,'%','down');
+card('Layoffs &amp; discharges','JTSLDR',1,'%','down');
+card('Total churn (hire+sep)','__CHURN__',1,'%','down');
+card('27+ wk share','LNS13025703',1,'%','up');
+card('Median duration (wks)','UEMPMED',0,'','up');
+card('Prime-age EPOP','LNS12300060',1,'%','down');
+
+// ---- charts ----
+Chart.defaults.font.family=getComputedStyle(document.body).fontFamily;
+Chart.defaults.font.size=11;
+Chart.defaults.color='#6b6b63';
+const GRID={color:'#eeeee9'};
+const C={green:'#2f6f4f',red:'#b4441f',blue:'#2b5c8a',gold:'#a67c00',grey:'#9a9a90',ink:'#1a1a17'};
+
+function baseOpts(extra){
+ return Object.assign({
+  responsive:true,maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,padding:12}},
+    tooltip:{callbacks:{}}},
+  scales:{x:{grid:{display:false},ticks:{maxTicksLimit:7,autoSkip:true}},
+          y:{grid:GRID,ticks:{maxTicksLimit:6}}}
+ },extra||{});
+}
+function line(v,color,label,opt){opt=opt||{};return{label:label,data:v,borderColor:color,backgroundColor:color,
+  borderWidth:opt.w||1.8,pointRadius:0,tension:.18,fill:opt.fill||false,borderDash:opt.dash||[],yAxisID:opt.y||'y'};}
+
+function mk(canvas,labels,datasets,opts){
+ new Chart(document.getElementById(canvas),{type:'line',data:{labels:labels,datasets:datasets},options:baseOpts(opts)});
+}
+
+// 1 hires
+mk('c_hires',dates('JTSHIR'),[line(vals('JTSHIR'),C.green,'Hires rate %')]);
+// 2 hires vs layoffs
+{const p=pair('JTSHIR','JTSLDR');
+ mk('c_hirelay',p.labels,[line(p.a,C.green,'Hires rate %'),line(p.b,C.red,'Layoffs & discharges rate %')]);}
+// 3 quits
+mk('c_quits',dates('JTSQUR'),[line(vals('JTSQUR'),C.blue,'Quits rate %')]);
+// 4 churn
+{const d=derive('JTSHIR','JTSTSR',(a,b)=>a+b);
+ mk('c_churn',d.labels,[line(d.data,C.ink,'Hires + separations rate %')]);}
+// 5 duration dual axis
+{const p=pair('LNS13025703','UEMPMED');
+ mk('c_dur',p.labels,[line(p.a,C.gold,'27+ wk share % (L)',{y:'y'}),line(p.b,C.red,'Median wks (R)',{y:'y1'})],
+   {scales:{x:{grid:{display:false},ticks:{maxTicksLimit:7}},
+     y:{position:'left',grid:GRID,ticks:{maxTicksLimit:6}},
+     y1:{position:'right',grid:{display:false},ticks:{maxTicksLimit:6}}}});}
+// 6 V/U
+{const d=derive('JTSJOL','UNEMPLOY',(a,b)=>a/b);
+ mk('c_vu',d.labels,[line(d.data,C.green,'Openings per unemployed')]);}
+// 7 gap
+{const d=derive('U6RATE','UNRATE',(a,b)=>a-b);
+ mk('c_gap',d.labels,[line(d.data,C.gold,'U6 − U3 (pp)',{fill:true})]);}
+// 8 prime age
+{const p=pair('LNS12300060','LNS11300060');
+ mk('c_prime',p.labels,[line(p.a,C.green,'EPOP 25–54 %'),line(p.b,C.blue,'Participation 25–54 %')]);}
+// 9 claims ratio
+{const ci=obs('ICSA'),cc=obs('CCSA');
+ // align by nearest index (both recent weekly)
+ const n=Math.min(ci.length,cc.length);
+ const labels=[],data=[];
+ for(let i=0;i<n;i++){const iy=ci[ci.length-n+i],cy=cc[cc.length-n+i];
+   labels.push(cy[0]); data.push(cy[1]/iy[1]);}
+ mk('c_claims',labels,[line(data,C.red,'Continuing ÷ initial',{w:2})],{scales:{x:{grid:{display:false}},y:{grid:GRID,ticks:{maxTicksLimit:5}}}});
+ const note=document.getElementById('claims_note');
+ note.textContent='Only recent weeks available in this snapshot (FRED weekly history truncates via the plain-text feed). The scheduled refresh appends a new point each week/month so the trend builds forward.';
+}
+
+document.getElementById('foot').innerHTML=
+ 'Source series (FRED): UNRATE, U6RATE, JTSHIR, JTSQUR, JTSLDR, JTSTSR, JTSJOL, UNEMPLOY, UEMPMED, LNS13025703 (27+wk share), LNS12300060 (prime EPOP), LNS11300060 (prime LFPR), ICSA, CCSA. '+
+ 'Underlying data: U.S. BLS (Employment Situation, JOLTS) and U.S. DOL (jobless claims). '+
+ '"Supports / counters" chips compare the latest reading to ~12 months prior and flag whether the move is consistent with the hiring-freeze thesis — they are directional heuristics, not a formal signal. This is an analytical tool, not investment advice.';
+})();
+</script>
+</body>
+</html>
