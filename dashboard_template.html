@@ -40,12 +40,30 @@ text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
 .foot{color:var(--muted);font-size:11.5px;margin-top:26px;line-height:1.6;}
 .foot code{background:#eee;padding:1px 4px;border-radius:3px;font-size:11px;}
 .legend-note{font-size:11px;color:var(--muted);margin-top:7px;}
+.note{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:16px 18px;margin-bottom:14px;font-size:13.5px;}
+.note h2{font-size:15px;margin:4px 0 8px;letter-spacing:-.01em;}
+.note .tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);}
+.note .srcs{color:var(--muted);font-size:11.5px;margin-bottom:0;}
+.note-foot{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;}
+.note-foot a{color:var(--blue);text-decoration:none;}
+.note-foot a:hover{text-decoration:underline;}
+.note .vchip{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-weight:600;margin-left:8px;vertical-align:1px;}
+.note .vchip.more{background:#e8f1ec;color:var(--accent);}
+.note .vchip.less{background:#f6e7e1;color:var(--warn);}
+.note .vchip.mixed{background:#efefea;color:var(--neutral);}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>Structural Unemployment Tracker</h1>
 <p class="sub">A hiring-freeze signature watch — U.S. labor data, monthly. Data snapshot fetched <span id="asof">—</span> from FRED (BLS &amp; DOL source series).</p>
+
+<div class="note" id="notebox" style="display:none">
+<span class="tag" id="note_tag"></span><span id="note_chip"></span>
+<h2 id="note_title"></h2>
+<div id="note_body"></div>
+<div class="note-foot"><a href="archive.html">Past update notes &rarr;</a></div>
+</div>
 
 <div class="thesis">
 <span class="tag">The thesis this dashboard tests</span>
@@ -72,6 +90,17 @@ text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
 
 <script>
 const DATA = __FRED_DATA__;
+const COMMENTARY = __COMMENTARY__;
+(function(){
+  if(!Array.isArray(COMMENTARY) || !COMMENTARY.length) return;
+  const n = COMMENTARY[0];
+  document.getElementById('notebox').style.display='block';
+  document.getElementById('note_tag').textContent = 'Latest update note — ' + (n.ref_label||n.ref_month) + ' data · published ' + (n.published||'');
+  const chips={more:'thesis more validated',less:'thesis less validated',mixed:'mixed'};
+  if(n.verdict) document.getElementById('note_chip').innerHTML = '<span class="vchip '+n.verdict+'">'+(chips[n.verdict]||n.verdict)+'</span>';
+  document.getElementById('note_title').textContent = n.title||'';
+  document.getElementById('note_body').innerHTML = n.html||'';
+})();
 </script>
 <script>
 (function(){
